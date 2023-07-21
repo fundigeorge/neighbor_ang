@@ -162,7 +162,7 @@ for a in test_azimuth:
         dst12, dst13, dst23, lat3, lon3 = intersection(lat1, lon1, lat2, lon2, azim13, a)
         print(dst12, dst13, dst23, lat3, lon3)
     except ValueError as e:
-         print("message from function", str(e))
+         print("message from function:", str(e))
          ambigous_cases +=1
          infinity_cases +=1
     
