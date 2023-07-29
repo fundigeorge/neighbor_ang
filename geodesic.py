@@ -1,5 +1,5 @@
 # Python 3 program to calculate Distance Between Two Points on Earth
-from math import radians, cos, sin, asin, acos, sqrt, atan2, atan, pi
+from math import radians, cos, sin, asin, acos, sqrt, atan2, atan, pi, degrees
 import numpy as np
 import pandas as pd
 class Geodesic:
@@ -25,8 +25,9 @@ class Geodesic:
     def __init__(self, lat, lon) -> None:
         self.lat = lat
         self.lon = lon 
-        self.half_bw = 30 
-        self.earth_circum = 40035      
+        self.half_bw = 30
+        self.earth_circum = 40035 
+        self.fdelta = 5     
         
     def distance(self,lat, lon):        
         """calculate the distance between point 1(lat1, lon1) and point 2(lat2, lon2)
@@ -131,7 +132,21 @@ class Geodesic:
             return dst13, lat3, lon3
 
 
-    def best_intersection(self, lat2, lon2, crs13, crs23):
+    def best_intersection_macro(self, lat2, lon2, crs13, crs23):
+        #convert angular to degrees to calculate the beamwidth edges
+        crs13 = degrees(crs13)
+        crs23 = degrees(crs23)
+        crs12 = self.bearing(lat2, lon2) #bearing from source to target
+        diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
+        diff_crs12_crs23= abs(((crs12+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of source-target and  target azimuth        
+
+        '''determine if source and target are facing in the same direction on a straight line;
+        that is same azimuth and bearing equal azimuth. if that the case, good neighbor
+        if dst12 is small'''
+        if  diff_crs12_crs13 < 5 and diff_crs12_crs23 < 5:
+            dst12 = self.distance(lat2, lon2)
+            return dst12
+        
         #calculate the beamwidth edges for source and target cell 
         pos_source_crs13 = radians((crs13 + self.half_bw) % 360)
         neg_source_crs13 = radians((crs13 - self.half_bw + 360) % 360)
