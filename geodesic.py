@@ -27,7 +27,7 @@ class Geodesic:
         self.lon = lon 
         self.half_bw = 30
         self.earth_circum = 40035 
-        self.fdelta = 5     
+        self.fdelta = 5
         
     def distance(self,lat, lon):        
         """calculate the distance between point 1(lat1, lon1) and point 2(lat2, lon2)
@@ -132,7 +132,7 @@ class Geodesic:
             return dst13, lat3, lon3
 
 
-    def best_intersection_macro(self, lat2, lon2, crs13, crs23):
+    def macro_best_intersection(self, lat2, lon2, crs13, crs23):
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(crs13)
         crs23 = degrees(crs23)
@@ -143,7 +143,7 @@ class Geodesic:
         '''determine if source and target are facing in the same direction on a straight line;
         that is same azimuth and bearing equal azimuth. if that the case, good neighbor
         if dst12 is small'''
-        if  diff_crs12_crs13 < 5 and diff_crs12_crs23 < 5:
+        if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
             return dst12
         
@@ -186,6 +186,30 @@ class Geodesic:
         #return the closest neighbor
         print(all_intersection)
         return all_intersection.min()
+    
+    def micro_best_intersection(self, lat2, lon2, source_azim):
+        #convert azimuth from radians to degrees
+        source_azim = degrees(source_azim)
+        #determine the bearing from source macro to target IBS
+        crs12 = self.bearing(lat2, lon2)
+        #difference
+        diff_crs12_source_azim = abs(((crs12+180) % 360) - ((source_azim+180) % 360) )
+        print('diff is', diff_crs12_source_azim)
+        """an IBS and a macro coverage intersect if the bearing from source to IBS is within
+        the macro sector edges, that is the  diff_crs12_source_azim is less than the half_BW.
+        return, how well within the sector coverage. a diff of zero, macro directly facing IBS
+        and a diff of 30, IBS is on the edge of the sector coverage. >30, IBS is outside the
+        the sector coverage"""
+        if diff_crs12_source_azim <= self.half_bw:
+            #determine directness of macro to IBS
+            directness = (self.half_bw-diff_crs12_source_azim)/self.half_bw
+            if directness == 0:
+                directness = directness + 0.1            
+            return directness
+        else:
+            return 0
+
+
   
 # #test data
 # #lat lon in radians
