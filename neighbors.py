@@ -53,13 +53,22 @@ if __name__ == "__main__":
 
 #test for micro ibs
     source_micro = Geodesic(lat1, lon1)
-    source_azim = radians(source_micro.bearing(lat2, lon2)+0)
+    source_azim = radians(source_micro.bearing(lat2, lon2)-10)
     crs12 = radians(source_micro.bearing(lat2, lon2))
     print('testing macro to micro function\n...............')
-    ibs_directness = source_micro.micro_best_intersection(lat2, lon2, source_azim)
-   
+    ibs_directness = source_micro.micro_best_intersection(lat2, lon2, source_azim, "macro")   
     print('directness', ibs_directness)
 
+#test for IBS to macro target
+    source_ibs = Geodesic(lat1, lon1)
+    print('\ntesting ibs to macro directness..............')
+    print("bearing ibs to macro", source_ibs.bearing(lat2, lon2))
+    target_azimuth = (source_ibs.bearing(lat2, lon2) + 180) %360
+    print("bearing from macro to ibs", target_azimuth)
+    target_azimuth = radians(target_azimuth-360)
+    site_type = "micro"
+    directness = source_ibs.micro_best_intersection(lat2, lon2, target_azimuth, site_type)
+    print('directness', directness)
 
 # test_azimuth = np.arange(11, 360, 30)  
 # ambigous_cases = 0
