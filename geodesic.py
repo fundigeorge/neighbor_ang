@@ -132,7 +132,7 @@ class Geodesic:
             return dst13, lat3, lon3
 
 
-    def macro_best_intersection(self, lat2, lon2, crs13, crs23):
+    def macro_intersection(self, lat2, lon2, crs13, crs23):
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(crs13)
         crs23 = degrees(crs23)
@@ -187,7 +187,7 @@ class Geodesic:
         print(all_intersection)
         return all_intersection.min()
     
-    def micro_best_intersection(self, lat2, lon2, source_azim, type="macro"):
+    def micro_intersection(self, lat2, lon2, source_azim, type="macro"):
         #convert azimuth from radians to degrees
         source_azim = degrees(source_azim)
         #determine the bearing from source macro to target IBS
