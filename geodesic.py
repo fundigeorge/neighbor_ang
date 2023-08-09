@@ -22,9 +22,11 @@ class Geodesic:
     intersection(lat1, lon1, lat2, lon2, crs13, crs23): calculate intersection point of two lines
     """
    
-    def __init__(self, lat, lon) -> None:
+    def __init__(self, lat, lon, azimuth, coverage) -> None:
         self.lat = lat
         self.lon = lon 
+        self.coverage = coverage
+        self.azim = azimuth
         self.half_bw = 30
         self.earth_circum = 40035 
         self.fdelta = 5
@@ -132,9 +134,9 @@ class Geodesic:
             return dst13, lat3, lon3
 
 
-    def macro_intersection(self, lat2, lon2, crs13, crs23):
+    def macro_intersection(self, lat2, lon2, crs23):
         #convert angular to degrees to calculate the beamwidth edges
-        crs13 = degrees(crs13)
+        crs13 = degrees(self.azim)
         crs23 = degrees(crs23)
         crs12 = self.bearing(lat2, lon2) #bearing from source to target
         diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
@@ -187,9 +189,9 @@ class Geodesic:
         print(all_intersection)
         return all_intersection.min()
     
-    def micro_intersection(self, lat2, lon2, source_azim, type="macro"):
+    def micro_intersection(self, lat2, lon2, type="macro"):
         #convert azimuth from radians to degrees
-        source_azim = degrees(source_azim)
+        source_azim = degrees(self.azim)
         #determine the bearing from source macro to target IBS
         if type == "macro":
             crs12 = self.bearing(lat2, lon2)
@@ -217,10 +219,73 @@ class Geodesic:
             directness = 0
             return directness
 
+    def source_neighbors(self, neighbors:pd.DataFrame):
+        """a function that calculate the neighberhood of target site to the source site.
+        macro to macro, determine the closest intersection of each source and target sector and
+        dst12 between source and target.
+        macro to ibs, determine the macro sector covering the IBS and dst12 between macro 
+        to the IBS and this apply to IBS to macro
+        IBS to IBS consider the dst12 between IBS to IBS
 
+        Args:
+            source_site(Geodesic): a object of Geodesic class with function for dst, inters, bearing
+            neighbors(pd.DataFrame): the site neighboring the source site
+            coverage(str): the type of coverage for the site, IBS, MACRO
+            s_azim(float): the source site azimuth
 
+        Returns:
+            pd.DataFrame: the source site with neighbors with intersection and dst12 between
+        
 
-  
+        """
+    
+        """determine if source site is macro or ibs and iterate over the neigbors site. apply
+        method for determining intersection depending on type of the target site
+        """
+        if self.coverage == "macro":
+            coverage_intersect = []
+            distance12 = []
+            for row in neighbors.itertuples(index=False):
+                t_lat = row.radian_lat
+                t_lon = row.radian_lon
+                t_azim = row.radian_azim
+                #determine intersite distance between source and target
+                dst12 = self.distance(t_lat, t_lon)
+                distance12.append(dst12)
+                if row.coverage == "macro":
+                    intersection = self.macro_intersection(t_lat, t_lon, t_azim)
+                    coverage_intersect.append(intersection)
+                elif row.coverage == "micro":
+                    intersection = self.micro_intersection(t_lat, t_lon, "macro")
+                    coverage_intersect.append(intersection)
+            #add column intersection and intersite distance
+            neighbors["intersection"] = coverage_intersect
+            neighbors["dst12"] = distance12
+
+        elif self.coverage == "micro":
+            coverage_intersect = []
+            distance12 = []
+            for row in neighbors.itertuples(index=False):
+                #get the target lat, lon, and azimuth
+                t_lat = row.radian_lat
+                t_lon = row.radian_lon
+                t_azim = row.radian_azim
+                #determine intersite distance between source and target
+                dst12 = self.distance(t_lat, t_lon)
+                distance12.append(dst12)
+                #if target is macro from micro determine the directness from micro to macro
+                if row.coverage == "macro":
+                    intersection  = self.micro_intersection(t_lat, t_lon, "micro")
+                    coverage_intersect.append(intersection)
+                #if target is IBS, determine the distance between two IBS
+                elif row.coverage == "micro":
+                    intersection = self.distance(t_lat, t_lon)
+                    coverage_intersect.append(intersection)
+            #add column intersection and intersite distance
+            neighbors["intersection"] = coverage_intersect
+            neighbors["dst12"] = distance12
+           
+        return neighbors
 # #test data
 # #lat lon in radians
 # lat1=radians(-1.2814722) #0.592539 -1.2814722 36.8209444
