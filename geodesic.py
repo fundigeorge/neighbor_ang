@@ -189,20 +189,22 @@ class Geodesic:
         print(all_intersection)
         return all_intersection.min()
     
-    def micro_intersection(self, lat2, lon2, type="macro"):
+    def micro_intersection(self, lat2, lon2, crs23, type="macro"):
         #convert azimuth from radians to degrees
         source_azim = degrees(self.azim)
+        target_azim = degrees(crs23)
         #determine the bearing from source macro to target IBS
         if type == "macro":
             crs12 = self.bearing(lat2, lon2)
+            #difference between bearing and azimuth of macro
+            diff_crs12_source_azim = abs(((crs12+180) % 360) - ((source_azim+180) % 360) )
         elif type == "micro":
             #bearing from IBS to target macro site
             crs12 = self.bearing(lat2, lon2)
-            #get the azimuth from macro to IBS
+            #get the bearing from macro to IBS
             crs12 = (crs12 + 180) % 360
-
-        #difference between bearing and azimuth of macro
-        diff_crs12_source_azim = abs(((crs12+180) % 360) - ((source_azim+180) % 360) )
+            #difference between bearing and azimuth of macro
+            diff_crs12_source_azim = abs(((crs12+180) % 360) - ((target_azim+180) % 360) )
         print('diff is', diff_crs12_source_azim)
         """an IBS and a macro coverage intersect if the bearing from source to IBS is within
         the macro sector edges, that is the  diff_crs12_source_azim is less than the half_BW.
