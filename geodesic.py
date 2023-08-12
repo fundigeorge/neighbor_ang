@@ -258,7 +258,7 @@ class Geodesic:
                     intersection = self.macro_intersection(t_lat, t_lon, t_azim)
                     coverage_intersect.append(intersection)
                 elif row.coverage == "micro":
-                    intersection = self.micro_intersection(t_lat, t_lon, "macro")
+                    intersection = self.micro_intersection(t_lat, t_lon, t_azim, "macro")
                     coverage_intersect.append(intersection)
             #add column intersection and intersite distance
             neighbors["intersection"] = coverage_intersect
@@ -277,7 +277,7 @@ class Geodesic:
                 distance12.append(dst12)
                 #if target is macro from micro determine the directness from micro to macro
                 if row.coverage == "macro":
-                    intersection  = self.micro_intersection(t_lat, t_lon, "micro")
+                    intersection  = self.micro_intersection(t_lat, t_lon,t_azim, "micro")
                     coverage_intersect.append(intersection)
                 #if target is IBS, determine the distance between two IBS
                 elif row.coverage == "micro":
