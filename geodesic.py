@@ -66,11 +66,19 @@ class Geodesic:
 
         #calculate distance between point 1 and point 2
         d=2*asin(sqrt((sin((self.lat-lat)/2))**2 +  cos(self.lat)*cos(lat)*(sin((self.lon-lon)/2))**2))
-
-        #calculate the bearing based on position
-        if sin(lon-self.lon)>0:      
+        print('distance is', d)
+        """calculate the bearing based on position
+        condition 1 check for points along a single longitude line(lat change only, bearing 
+        can either be zero or 180)
+        condition 2 check a diff lat,lon point east of source and condition 3 west of source
+        """
+        if self.lat > lat and self.lon == lon:
+            tc1 = pi
+        elif sin(lon-self.lon)>0:  
+            print('yes')    
             tc1=acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
         else:
+            print((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))
             tc1=2*pi-acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
 
         #convert the radian angle to degree
@@ -138,7 +146,10 @@ class Geodesic:
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(self.azim)
         crs23 = degrees(crs23)
-        crs12 = self.bearing(lat2, lon2) #bearing from source to target
+        try:
+            crs12 = self.bearing(lat2, lon2) #bearing from source to target
+        except ZeroDivisionError as e:
+            return 0
         diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
         diff_crs12_crs23= abs(((crs12+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of source-target and  target azimuth        
 
