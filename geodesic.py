@@ -66,7 +66,6 @@ class Geodesic:
 
         #calculate distance between point 1 and point 2
         d=2*asin(sqrt((sin((self.lat-lat)/2))**2 +  cos(self.lat)*cos(lat)*(sin((self.lon-lon)/2))**2))
-        print('distance is', d)
         """calculate the bearing based on position
         condition 1 check for points along a single longitude line(lat change only, bearing 
         can either be zero or 180)
@@ -75,7 +74,6 @@ class Geodesic:
         if self.lat > lat and self.lon == lon:
             tc1 = pi
         elif sin(lon-self.lon)>0:  
-            print('yes')    
             tc1=acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
         else:
             print((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))
@@ -146,10 +144,11 @@ class Geodesic:
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(self.azim)
         crs23 = degrees(crs23)
+        #check if same point, same point raise a zerodivisionerror
         try:
             crs12 = self.bearing(lat2, lon2) #bearing from source to target
         except ZeroDivisionError as e:
-            return 0
+            return "source point"
         diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
         diff_crs12_crs23= abs(((crs12+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of source-target and  target azimuth        
 
@@ -206,12 +205,18 @@ class Geodesic:
         target_azim = degrees(crs23)
         #determine the bearing from source macro to target IBS
         if type == "macro":
-            crs12 = self.bearing(lat2, lon2)
+            try:
+                crs12 = self.bearing(lat2, lon2)
+            except ZeroDivisionError as e:
+                return "source point"
             #difference between bearing and azimuth of macro
             diff_crs12_source_azim = abs(((crs12+180) % 360) - ((source_azim+180) % 360) )
         elif type == "micro":
             #bearing from IBS to target macro site
-            crs12 = self.bearing(lat2, lon2)
+            try:
+                crs12 = self.bearing(lat2, lon2)
+            except ZeroDivisionError as e:
+                return "source point"          
             #get the bearing from macro to IBS
             crs12 = (crs12 + 180) % 360
             #difference between bearing and azimuth of macro
