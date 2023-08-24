@@ -46,8 +46,7 @@ class Geodesic:
         a = sin(dlat / 2)**2 + cos(self.lat) * cos(lat) * sin(dlon / 2)**2
         angular_distance = 2 * asin(sqrt(a)) 
         #distance in kms by multiplying with earth radius
-        unit_distance = angular_distance * 6371     
-
+        unit_distance = angular_distance * 6371  
         return unit_distance
 
     def bearing(self, lat, lon):
@@ -73,6 +72,8 @@ class Geodesic:
         """
         if self.lat > lat and self.lon == lon:
             tc1 = pi
+        elif self.lat < lat and self.lon == lon:
+            tc1 = 0
         elif sin(lon-self.lon)>0:  
             tc1=acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
         else:
@@ -101,32 +102,57 @@ class Geodesic:
         #distance between point 1 and point 2
         dst12 = 2*asin(sqrt((sin((self.lat-lat)/2))**2 + cos(self.lat)*cos(lat)*sin((self.lon-lon)/2)**2))
         #calculating bearing from point 1 to 2 csr12 and from point 2 to 1 crs21
-        if sin(lon-self.lon) > 0:
+        """special case of point along a longitude. self.lon==lon result to
+        """
+        
+        if self.lon == lon:
+            if self.lat > lat: 
+                crs12 = pi
+                crs21 = 0               
+                #print('longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
+                if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
+                    #print("returning")
+                    return dst12*6371, lat, lon
+            elif self.lat < lat:
+                crs12 = 0
+                crs21 = pi
+                #if degrees(crs13) == 0 or (degrees(crs13) == 180 and degrees(crs23) == 180):
+                if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
+                    #print('case 2:longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
+                    #print("returning")
+                    return dst12*6371, lat, lon
+        #other scenario
+        elif sin(lon-self.lon) > 0:
             crs12=acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
             crs21=2.*pi-acos((sin(self.lat)-sin(lat)*cos(dst12))/(sin(dst12)*cos(lat)))
+            #print('crs12:', degrees(crs12), 'crs21', degrees(crs21))
         else:
             crs12=2.*pi-acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
             crs21=acos((sin(self.lat)-sin(lat)*cos(dst12))/(sin(dst12)*cos(lat)))
+            #print('case2: crs12', degrees(crs12), 'crs21', degrees(crs21))
 
         #calculate angles in the triangle(P1, P2, P3), ang1=(P2,P1,P3), ang2=(P1,P2,P3), 
         ang1 = (crs13 - crs12 + pi)%(2*pi) - pi
         ang2 =  (crs21-crs23 + pi)%(2*pi) - pi
+        #print("angle1 and angle2", degrees(ang1), degrees(ang2))
+
 
         #check for parallel lines and ambiguous condition(i.e antipodal point)
         if (sin(ang1)==0 and sin(ang2)==0):
-
             # dst13="infinity"; dst23="infinity"; lat3="infinity"; lon3="infinity"
             # return dst12, dst13, dst23, lat3, lon3
             raise ValueError("infinity")
+        
         elif sin(ang1)*sin(ang2)<0:
-
             # dst13="ambiguous"; dst23="ambiguous"; lat3="ambiguous"; lon3="ambiguous"
             # return dst12, dst13, dst23, lat3, lon3
             raise ValueError("ambiguous intersection")
         else:
             ang1=abs(ang1)
             ang2=abs(ang2)
-            ang3=acos(-cos(ang1)*cos(ang2)+sin(ang1)*sin(ang2)*cos(dst12)) 
+            ang3=acos(-cos(ang1)*cos(ang2)+sin(ang1)*sin(ang2)*cos(dst12))
+            # print('ang3:', degrees(ang3)) 
+            # print("dst12", dst12*6371)
             dst13=atan2(sin(dst12)*sin(ang1)*sin(ang2),cos(ang2)+cos(ang1)*cos(ang3))
             lat3=asin(sin(self.lat)*cos(dst13)+cos(self.lat)*sin(dst13)*cos(crs13))
             dlon=atan2(sin(crs13)*sin(dst13)*cos(self.lat),cos(dst13)-sin(self.lat)*sin(lat3))
@@ -144,19 +170,25 @@ class Geodesic:
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(self.azim)
         crs23 = degrees(crs23)
+        print("--------------")
+        print("crs13", crs13, "crs23:", crs23)
         #check if same point, same point raise a zerodivisionerror
+        print("distance to target", self.distance(lat2, lon2))
         try:
             crs12 = self.bearing(lat2, lon2) #bearing from source to target
+            print("bearing to target", crs12)
         except ZeroDivisionError as e:
             return "source point"
+        
+        #todo directly facing sector, intersection distance to be half dst12
         diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
         diff_crs12_crs23= abs(((crs12+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of source-target and  target azimuth        
-
         '''determine if source and target are facing in the same direction on a straight line;
         that is same azimuth and bearing equal azimuth. if that the case, good neighbor
         if dst12 is small'''
         if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
+            print("i returned distance")
             return dst12
         
         #calculate the beamwidth edges for source and target cell 
