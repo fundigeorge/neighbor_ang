@@ -102,57 +102,46 @@ class Geodesic:
         #distance between point 1 and point 2
         dst12 = 2*asin(sqrt((sin((self.lat-lat)/2))**2 + cos(self.lat)*cos(lat)*sin((self.lon-lon)/2)**2))
         #calculating bearing from point 1 to 2 csr12 and from point 2 to 1 crs21
-        """special case of point along a longitude. self.lon==lon result to
+        """special case of point along a longitude. self.lon==lon result math error of 
+        acos(x>1) because crs12=acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
+        result to a float number 1.00003434 and acos(x)== math error
         """        
         if self.lon == lon:
             if self.lat > lat: 
                 crs12 = pi
                 crs21 = 0               
-                #print('longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
-                    #print("returning")
                     print("Above:distance for edge facing source")
-                    return dst12*6371, lat, lon
+                    return dst12*6371
             elif self.lat < lat:
                 crs12 = 0
                 crs21 = pi
-                #if degrees(crs13) == 0 or (degrees(crs13) == 180 and degrees(crs23) == 180):
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
-                    #print('case 2:longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
-                    #print("returning")
                     print("Below:distance for edge facing source")
-                    return dst12*6371, lat, lon
+                    return dst12*6371
         #other scenario
         elif sin(lon-self.lon) > 0:
             crs12=acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
             crs21=2.*pi-acos((sin(self.lat)-sin(lat)*cos(dst12))/(sin(dst12)*cos(lat)))
-            #print('crs12:', degrees(crs12), 'crs21', degrees(crs21))
         else:
             crs12=2.*pi-acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
             crs21=acos((sin(self.lat)-sin(lat)*cos(dst12))/(sin(dst12)*cos(lat)))
-            #print('case2: crs12', degrees(crs12), 'crs21', degrees(crs21))
+            
         #calculate angles in the triangle(P1, P2, P3), ang1=(P2,P1,P3), ang2=(P1,P2,P3), 
         ang1 = (crs13 - crs12 + pi)%(2*pi) - pi
         ang2 =  (crs21-crs23 + pi)%(2*pi) - pi
-        #print("angle1 and angle2", degrees(ang1), degrees(ang2))
-
-
+        
         #check for parallel lines and ambiguous condition(i.e antipodal point)
         if (sin(ang1)==0 and sin(ang2)==0):
-            # dst13="infinity"; dst23="infinity"; lat3="infinity"; lon3="infinity"
-            # return dst12, dst13, dst23, lat3, lon3
-            raise ValueError("infinity")
-        
+            raise ValueError("infinity") 
+               
         elif sin(ang1)*sin(ang2)<0:
-            # dst13="ambiguous"; dst23="ambiguous"; lat3="ambiguous"; lon3="ambiguous"
-            # return dst12, dst13, dst23, lat3, lon3
-            raise ValueError("ambiguous intersection")
+             raise ValueError("ambiguous intersection")
+        
         else:
             ang1=abs(ang1)
             ang2=abs(ang2)
             ang3=acos(-cos(ang1)*cos(ang2)+sin(ang1)*sin(ang2)*cos(dst12))
-            # print('ang3:', degrees(ang3)) 
-            # print("dst12", dst12*6371)
             dst13=atan2(sin(dst12)*sin(ang1)*sin(ang2),cos(ang2)+cos(ang1)*cos(ang3))
             lat3=asin(sin(self.lat)*cos(dst13)+cos(self.lat)*sin(dst13)*cos(crs13))
             dlon=atan2(sin(crs13)*sin(dst13)*cos(self.lat),cos(dst13)-sin(self.lat)*sin(lat3))
@@ -163,7 +152,7 @@ class Geodesic:
             dst12 = dst12*6371
             lat3 = (lat3*180/pi) # in decimal degrees,
             lon3 = (lon3*180/pi) # in decimal degrees,
-            return dst13, lat3, lon3
+            return dst13
 
 
     def macro_intersection(self, lat2, lon2, crs23):
@@ -189,7 +178,15 @@ class Geodesic:
      
         '''determine if source and target are facing in the same direction on a straight line;
         that is same azimuth and bearing equal azimuth. if that the case, good neighbor
-        if dst12 is small'''
+        if dst12 is small
+        TO DO:
+        single sector facing target or single target sector facing source
+        use if diff_crs12_crs13 < delta and not diff_crs21_crs23 < delta or 
+        use if diff_crs21_crs23 < delta and not diff_crs12_crs13 < delta or
+        SECTOR FACING EACH OTHER:form isoscelas triang 
+        include special cases with crs13 and crs23 compared to crs12 and crs21 - either source
+        or target sector directly facing target or source resp       
+        '''
         if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
             print("source behind target")
@@ -213,28 +210,28 @@ class Geodesic:
         except ValueError as e:
             all_intersection[0] = self.earth_circum
         else:
-            all_intersection[0] = pos_source_pos_target_x[0]
+            all_intersection[0] = pos_source_pos_target_x
         #intersection 2
         try:
             pos_source_neg_target_x = self.intersection(lat2, lon2, pos_source_crs13, neg_target_crs23)
         except ValueError as e:
             all_intersection[1] = self.earth_circum
         else:
-            all_intersection[1] = pos_source_neg_target_x[0]
+            all_intersection[1] = pos_source_neg_target_x
         #intersection 3
         try:
             neg_source_pos_target_x = self.intersection(lat2, lon2, neg_source_crs13, pos_target_crs23)
         except ValueError as e:
             all_intersection[2] = self.earth_circum
         else:
-            all_intersection[2]= neg_source_pos_target_x[0]  
+            all_intersection[2]= neg_source_pos_target_x
         #intersection 4
         try:
             neg_source_neg_target_x = self.intersection(lat2, lon2, neg_source_crs13, neg_target_crs23)
         except ValueError as e:
             all_intersection[3] = self.earth_circum
         else:
-            all_intersection[3] = neg_source_neg_target_x[0]
+            all_intersection[3] = neg_source_neg_target_x
 
         #return the closest neighbor
         print(all_intersection)
