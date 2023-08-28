@@ -103,8 +103,7 @@ class Geodesic:
         dst12 = 2*asin(sqrt((sin((self.lat-lat)/2))**2 + cos(self.lat)*cos(lat)*sin((self.lon-lon)/2)**2))
         #calculating bearing from point 1 to 2 csr12 and from point 2 to 1 crs21
         """special case of point along a longitude. self.lon==lon result to
-        """
-        
+        """        
         if self.lon == lon:
             if self.lat > lat: 
                 crs12 = pi
@@ -112,6 +111,7 @@ class Geodesic:
                 #print('longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
                     #print("returning")
+                    print("Above:distance for edge facing source")
                     return dst12*6371, lat, lon
             elif self.lat < lat:
                 crs12 = 0
@@ -120,6 +120,7 @@ class Geodesic:
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
                     #print('case 2:longitude: crs12:', degrees(crs12), 'crs21', degrees(crs21))
                     #print("returning")
+                    print("Below:distance for edge facing source")
                     return dst12*6371, lat, lon
         #other scenario
         elif sin(lon-self.lon) > 0:
@@ -130,7 +131,6 @@ class Geodesic:
             crs12=2.*pi-acos((sin(lat)-sin(self.lat)*cos(dst12))/(sin(dst12)*cos(self.lat)))
             crs21=acos((sin(self.lat)-sin(lat)*cos(dst12))/(sin(dst12)*cos(lat)))
             #print('case2: crs12', degrees(crs12), 'crs21', degrees(crs21))
-
         #calculate angles in the triangle(P1, P2, P3), ang1=(P2,P1,P3), ang2=(P1,P2,P3), 
         ang1 = (crs13 - crs12 + pi)%(2*pi) - pi
         ang2 =  (crs21-crs23 + pi)%(2*pi) - pi
@@ -176,19 +176,27 @@ class Geodesic:
         print("distance to target", self.distance(lat2, lon2))
         try:
             crs12 = self.bearing(lat2, lon2) #bearing from source to target
-            print("bearing to target", crs12)
+            crs21 = (crs12 + 180) % 360
+            print("bearings:crs12", crs12, 'crs21', crs21)
         except ZeroDivisionError as e:
             return "source point"
         
         #todo directly facing sector, intersection distance to be half dst12
         diff_crs12_crs13 = abs(((crs12+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of source-target and source azimuth
         diff_crs12_crs23= abs(((crs12+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of source-target and  target azimuth        
+        diff_crs21_crs13 = abs(((crs21+180) % 360) - ((crs13+180) % 360) ) #diff between bearing of target-source and source azimuth
+        diff_crs21_crs23= abs(((crs21+180) % 360) - ((crs23+180) % 360) ) #diff between bearing of target-source and  target azimuth        
+     
         '''determine if source and target are facing in the same direction on a straight line;
         that is same azimuth and bearing equal azimuth. if that the case, good neighbor
         if dst12 is small'''
         if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
-            print("i returned distance")
+            print("source behind target")
+            return dst12
+        elif diff_crs21_crs13 < self.fdelta and diff_crs21_crs23 < self.fdelta:
+            print("distance target behind source")
+            dst12 = self.distance(lat2, lon2)
             return dst12
         
         #calculate the beamwidth edges for source and target cell 
@@ -196,6 +204,7 @@ class Geodesic:
         neg_source_crs13 = radians((crs13 - self.half_bw + 360) % 360)
         pos_target_crs23 = radians((crs23 + self.half_bw) % 360)
         neg_target_crs23 = radians((crs23 - self.half_bw + 360) % 360)
+        print("the edges", degrees(pos_source_crs13), degrees(neg_source_crs13), degrees(pos_target_crs23), degrees(neg_target_crs23))
 
         all_intersection = pd.Series()
         #intersection 1
