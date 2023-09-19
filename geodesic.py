@@ -185,7 +185,9 @@ class Geodesic:
         use if diff_crs21_crs23 < delta and not diff_crs12_crs13 < delta or
         SECTOR FACING EACH OTHER:form isoscelas triang 
         include special cases with crs13 and crs23 compared to crs12 and crs21 - either source
-        or target sector directly facing target or source resp       
+        or target sector directly facing target or source resp   
+        if crs12 or crs21 is within source or target edges, maybe increase 
+        the self.fdelta(return the dst12)    
         '''
         if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
@@ -244,7 +246,9 @@ class Geodesic:
         #determine the bearing from source macro to target IBS
         if type == "macro":
             try:
+                print("in here")
                 crs12 = self.bearing(lat2, lon2)
+                print("in here with crs12 as:", crs12)
             except ZeroDivisionError as e:
                 return "source point"
             #difference between bearing and azimuth of macro
@@ -259,6 +263,7 @@ class Geodesic:
             crs12 = (crs12 + 180) % 360
             #difference between bearing and azimuth of macro
             diff_crs12_source_azim = abs(((crs12+180) % 360) - ((target_azim+180) % 360) )
+        print('bearing crs12:', crs12)
         print('diff is', diff_crs12_source_azim)
         """an IBS and a macro coverage intersect if the bearing from source to IBS is within
         the macro sector edges, that is the  diff_crs12_source_azim is less than the half_BW.
@@ -335,6 +340,7 @@ class Geodesic:
                     coverage_intersect.append(intersection)
                 #if target is IBS, determine the distance between two IBS
                 elif row.coverage == "micro":
+                    #to do correct intersection = dst12 
                     intersection = self.distance(t_lat, t_lon)
                     coverage_intersect.append(intersection)
             #add column intersection and intersite distance
