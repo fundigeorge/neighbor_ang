@@ -1,4 +1,6 @@
 import pandas as pd
+import sqlalchemy
+from soan_db_conn import conn_db
 
 class Neighborhood:
         
@@ -18,13 +20,12 @@ class Neighborhood:
     -------
     expanded_region(): determine the lat lon making the grid around the source site
     """
-    def __init__(self, lat, lon, sites:pd.DataFrame,):
+    def __init__(self, lat, lon):
         self.lat = lat
         self.lon = lon
-        self.sites = sites
         self.dp = 2
         self.offset = 0.01
-        self.site_size = 2351
+        self.site_size = 32
 
     def expanded_region(self, dp, offset):
         lat = round(self.lat, dp)   
@@ -39,70 +40,80 @@ class Neighborhood:
             ]
         return grids
 
-    def source_neighbors(self,):
+    def source_neighbors(self, neigh_size):
+        #define the number of neighbors site for the source site
+        self.site_size = neigh_size
         #determine the 1km square around the site
         lat = round(self.lat, self.dp)
         lon = round(self.lon, self.dp)
-        neigh_sites = self.sites.loc[(self.sites["twodp_lat"]==lat) & (self.sites["twodp_lon"]==lon), :]
+        #filter from the db  any transmitter with twodp_lat and twodp equal to the source site
+        #todo, pick only the site, transmitter, lat, lon, azimuth fields
+        #todo what is impact of neigh_sites as a local variable and a object variable
+        query = f"select * from umts_transmitter where (twodp_lat = {lat} and twodp_lon = {lon})"
+        neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset ="site").shape 
-
-        print("sites:transmitter", self.sites.shape)
-        print("sites:sites", self.sites.drop_duplicates(subset="site").shape)
+        print("sites:transmitter", pd.read_sql('select count(*) from umts_transmitter', conn_db))
+        print("sites:sites", pd.read_sql('select COUNT(DISTINCT site) from umts_transmitter', conn_db))
         print("region:transmitter", neigh_sites.shape)
         print("region:sites", neigh_sites.drop_duplicates(subset="site").shape) 
           
-        #check if no of site is >= 30, if not expand the search area
+        #check if no of site is > neigh_size, if not expand the search area
         if unique_sites[0] >= self.site_size:
-            return neigh_sites        
+            return neigh_sites       
+        
         #if no of sites in area is less expand area to 3.3km sqaurearound the site       
         grids = self.expanded_region(self.dp, self.offset)
         print(grids)
-        neigh_sites = self.sites.loc[((self.sites['twodp_lat']==grids[0][0])&(self.sites['twodp_lon']==grids[0][1])) | 
-                                          ((self.sites['twodp_lat']==grids[1][0])&(self.sites['twodp_lon']==grids[1][1])) |  
-                                          ((self.sites['twodp_lat']==grids[2][0])&(self.sites['twodp_lon']==grids[2][1])) | 
-                                          ((self.sites['twodp_lat']==grids[3][0])&(self.sites['twodp_lon']==grids[3][1])) | 
-                                          ((self.sites['twodp_lat']==grids[4][0])&(self.sites['twodp_lon']==grids[4][1])) |
-                                          ((self.sites['twodp_lat']==grids[5][0])&(self.sites['twodp_lon']==grids[5][1])) |
-                                          ((self.sites['twodp_lat']==grids[6][0])&(self.sites['twodp_lon']==grids[6][1])) |  
-                                          ((self.sites['twodp_lat']==grids[7][0])&(self.sites['twodp_lon']==grids[7][1])) | 
-                                          ((self.sites['twodp_lat']==grids[8][0])&(self.sites['twodp_lon']==grids[8][1])), : 
-                                         ]
+        query = f""" select * from umts_transmitter where (twodp_lat={grids[0][0]} and twodp_lon={grids[0][1]}) or
+                                                        (twodp_lat={grids[1][0]} and twodp_lon={grids[1][1]}) or
+                                                        (twodp_lat={grids[2][0]} and twodp_lon={grids[2][1]}) or
+                                                        (twodp_lat={grids[3][0]} and twodp_lon={grids[3][1]}) or
+                                                        (twodp_lat={grids[4][0]} and twodp_lon={grids[4][1]}) or
+                                                        (twodp_lat={grids[5][0]} and twodp_lon={grids[5][1]}) or
+                                                        (twodp_lat={grids[6][0]} and twodp_lon={grids[6][1]}) or
+                                                        (twodp_lat={grids[7][0]} and twodp_lon={grids[7][1]}) or
+                                                        (twodp_lat={grids[8][0]} and twodp_lon={grids[8][1]})                                         
+        """
+        neigh_sites = pd.read_sql(query, conn_db)
         #check if number of site >= 30
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
         print("3.3km square", neigh_sites.shape)
         print("3.3km square", unique_sites)
         if unique_sites[0] >= self.site_size:
-            print("expanded unique", neigh_sites.drop_duplicates(subset="site").shape)
+            print("expanded unique 3.3km", neigh_sites.drop_duplicates(subset="site").shape)
             return neigh_sites
         
         #if no of site is less expand the area to 11km square around source
         lat = round(self.lat, 1)
         lon = round(self.lon, 1)
         #filter transmitter on this lat lon combination
-        neigh_sites = self.sites.loc[(self.sites["onedp_lat"]==lat) & (self.sites["onedp_lon"]==lon), :]
+        query = f'select * from umts_transmitter where (onedp_lat = {lat} and onedp_lon = {lon})'
+        neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
+        print("11km square", neigh_sites.shape)
+        print("11km square", unique_sites)
         if unique_sites[0] >= self.site_size:
             print("returning from 11km")
-            print(neigh_sites.shape)
-            print(unique_sites)
             return neigh_sites
         
         #if no site is less expand the area to 33km square around the surce
         grids = self.expanded_region(1, 0.1)
         print(grids)
-        neigh_sites = self.sites.loc[((self.sites['onedp_lat']==grids[0][0])&(self.sites['onedp_lon']==grids[0][1])) | 
-                                          ((self.sites['onedp_lat']==grids[1][0])&(self.sites['onedp_lon']==grids[1][1])) |  
-                                          ((self.sites['onedp_lat']==grids[2][0])&(self.sites['onedp_lon']==grids[2][1])) | 
-                                          ((self.sites['onedp_lat']==grids[3][0])&(self.sites['onedp_lon']==grids[3][1])) | 
-                                          ((self.sites['onedp_lat']==grids[4][0])&(self.sites['onedp_lon']==grids[4][1])) |
-                                          ((self.sites['onedp_lat']==grids[5][0])&(self.sites['onedp_lon']==grids[5][1])) |
-                                          ((self.sites['onedp_lat']==grids[6][0])&(self.sites['onedp_lon']==grids[6][1])) |  
-                                          ((self.sites['onedp_lat']==grids[7][0])&(self.sites['onedp_lon']==grids[7][1])) | 
-                                          ((self.sites['onedp_lat']==grids[8][0])&(self.sites['onedp_lon']==grids[8][1])), : 
-                                         ]     
-         
+        query = f""" select * from umts_transmitter where (onedp_lat={grids[0][0]} and onedp_lon={grids[0][1]}) or
+                                                        (onedp_lat={grids[1][0]} and onedp_lon={grids[1][1]}) or
+                                                        (onedp_lat={grids[2][0]} and onedp_lon={grids[2][1]}) or
+                                                        (onedp_lat={grids[3][0]} and onedp_lon={grids[3][1]}) or
+                                                        (onedp_lat={grids[4][0]} and onedp_lon={grids[4][1]}) or
+                                                        (onedp_lat={grids[5][0]} and onedp_lon={grids[5][1]}) or
+                                                        (onedp_lat={grids[6][0]} and onedp_lon={grids[6][1]}) or
+                                                        (onedp_lat={grids[7][0]} and onedp_lon={grids[7][1]}) or
+                                                        (onedp_lat={grids[8][0]} and onedp_lon={grids[8][1]})                                         
+        """            
+        neigh_sites =pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
         print(unique_sites)
+        print("33km square", neigh_sites.shape)
+        print("33km square", unique_sites)
         #33km square around the site is largest area to be considered
         return neigh_sites
 
