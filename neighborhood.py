@@ -52,10 +52,10 @@ class Neighborhood:
         query = f"select * from umts_transmitter where (twodp_lat = {lat} and twodp_lon = {lon})"
         neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset ="site").shape 
-        print("sites:transmitter", pd.read_sql('select count(*) from umts_transmitter', conn_db))
-        print("sites:sites", pd.read_sql('select COUNT(DISTINCT site) from umts_transmitter', conn_db))
-        print("region:transmitter", neigh_sites.shape)
-        print("region:sites", neigh_sites.drop_duplicates(subset="site").shape) 
+        # print("sites:transmitter", pd.read_sql('select count(*) from umts_transmitter', conn_db))
+        # print("sites:sites", pd.read_sql('select COUNT(DISTINCT site) from umts_transmitter', conn_db))
+        # print("region:transmitter", neigh_sites.shape)
+        # print("region:sites", neigh_sites.drop_duplicates(subset="site").shape) 
           
         #check if no of site is > neigh_size, if not expand the search area
         if unique_sites[0] >= self.site_size:
@@ -63,7 +63,7 @@ class Neighborhood:
         
         #if no of sites in area is less expand area to 3.3km sqaurearound the site       
         grids = self.expanded_region(self.dp, self.offset)
-        print(grids)
+        # print(grids)
         query = f""" select * from umts_transmitter where (twodp_lat={grids[0][0]} and twodp_lon={grids[0][1]}) or
                                                         (twodp_lat={grids[1][0]} and twodp_lon={grids[1][1]}) or
                                                         (twodp_lat={grids[2][0]} and twodp_lon={grids[2][1]}) or
@@ -77,10 +77,10 @@ class Neighborhood:
         neigh_sites = pd.read_sql(query, conn_db)
         #check if number of site >= 30
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
-        print("3.3km square", neigh_sites.shape)
-        print("3.3km square", unique_sites)
+        # print("3.3km square", neigh_sites.shape)
+        # print("3.3km square", unique_sites)
         if unique_sites[0] >= self.site_size:
-            print("expanded unique 3.3km", neigh_sites.drop_duplicates(subset="site").shape)
+            # print("expanded unique 3.3km", neigh_sites.drop_duplicates(subset="site").shape)
             return neigh_sites
         
         #if no of site is less expand the area to 11km square around source
@@ -90,15 +90,15 @@ class Neighborhood:
         query = f'select * from umts_transmitter where (onedp_lat = {lat} and onedp_lon = {lon})'
         neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
-        print("11km square", neigh_sites.shape)
-        print("11km square", unique_sites)
+        # print("11km square", neigh_sites.shape)
+        # print("11km square", unique_sites)
         if unique_sites[0] >= self.site_size:
-            print("returning from 11km")
+            # print("returning from 11km")
             return neigh_sites
         
         #if no site is less expand the area to 33km square around the surce
         grids = self.expanded_region(1, 0.1)
-        print(grids)
+        # print(grids)
         query = f""" select * from umts_transmitter where (onedp_lat={grids[0][0]} and onedp_lon={grids[0][1]}) or
                                                         (onedp_lat={grids[1][0]} and onedp_lon={grids[1][1]}) or
                                                         (onedp_lat={grids[2][0]} and onedp_lon={grids[2][1]}) or
@@ -111,9 +111,9 @@ class Neighborhood:
         """            
         neigh_sites =pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
-        print(unique_sites)
-        print("33km square", neigh_sites.shape)
-        print("33km square", unique_sites)
+        # print(unique_sites)
+        # print("33km square", neigh_sites.shape)
+        # print("33km square", unique_sites)
         #33km square around the site is largest area to be considered
         return neigh_sites
 
