@@ -77,7 +77,7 @@ class Geodesic:
         elif sin(lon-self.lon)>0:  
             tc1=acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
         else:
-            print((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))
+            ##print((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))
             tc1=2*pi-acos((sin(lat)-sin(self.lat)*cos(d))/(sin(d)*cos(self.lat)))    
 
         #convert the radian angle to degree
@@ -111,13 +111,13 @@ class Geodesic:
                 crs12 = pi
                 crs21 = 0               
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
-                    print("Above:distance for edge facing source")
+                    ##print("Above:distance for edge facing source")
                     return dst12*6371
             elif self.lat < lat:
                 crs12 = 0
                 crs21 = pi
                 if degrees(crs13) == degrees(crs12) or (degrees(crs23) == degrees(crs21)):
-                    print("Below:distance for edge facing source")
+                    ##print("Below:distance for edge facing source")
                     return dst12*6371
         #other scenario
         elif sin(lon-self.lon) > 0:
@@ -159,14 +159,14 @@ class Geodesic:
         #convert angular to degrees to calculate the beamwidth edges
         crs13 = degrees(self.azim)
         crs23 = degrees(crs23)
-        print("--------------")
-        print("crs13", crs13, "crs23:", crs23)
+        ##print("--------------")
+        ##print("crs13", crs13, "crs23:", crs23)
         #check if same point, same point raise a zerodivisionerror
-        print("distance to target", self.distance(lat2, lon2))
+        ##print("distance to target", self.distance(lat2, lon2))
         try:
             crs12 = self.bearing(lat2, lon2) #bearing from source to target
             crs21 = (crs12 + 180) % 360
-            print("bearings:crs12", crs12, 'crs21', crs21)
+            ##print("bearings:crs12", crs12, 'crs21', crs21)
         except ZeroDivisionError as e:
             return "source point"
         
@@ -191,10 +191,10 @@ class Geodesic:
         '''
         if  diff_crs12_crs13 < self.fdelta and diff_crs12_crs23 < self.fdelta:
             dst12 = self.distance(lat2, lon2)
-            print("source behind target")
+            ##print("source behind target")
             return dst12
         elif diff_crs21_crs13 < self.fdelta and diff_crs21_crs23 < self.fdelta:
-            print("distance target behind source")
+            ##print("distance target behind source")
             dst12 = self.distance(lat2, lon2)
             return dst12
         
@@ -203,7 +203,7 @@ class Geodesic:
         neg_source_crs13 = radians((crs13 - self.half_bw + 360) % 360)
         pos_target_crs23 = radians((crs23 + self.half_bw) % 360)
         neg_target_crs23 = radians((crs23 - self.half_bw + 360) % 360)
-        print("the edges", degrees(pos_source_crs13), degrees(neg_source_crs13), degrees(pos_target_crs23), degrees(neg_target_crs23))
+        ##print("the edges", degrees(pos_source_crs13), degrees(neg_source_crs13), degrees(pos_target_crs23), degrees(neg_target_crs23))
 
         all_intersection = pd.Series()
         #intersection 1
@@ -236,7 +236,7 @@ class Geodesic:
             all_intersection[3] = neg_source_neg_target_x
 
         #return the closest neighbor
-        print(all_intersection)
+        ##print(all_intersection)
         return all_intersection.min()
     
     def micro_intersection(self, lat2, lon2, crs23, type="macro"):
@@ -246,9 +246,9 @@ class Geodesic:
         #determine the bearing from source macro to target IBS
         if type == "macro":
             try:
-                print("in here")
+                ##print("in here")
                 crs12 = self.bearing(lat2, lon2)
-                print("in here with crs12 as:", crs12)
+                ##print("in here with crs12 as:", crs12)
             except ZeroDivisionError as e:
                 return "source point"
             #difference between bearing and azimuth of macro
@@ -263,8 +263,8 @@ class Geodesic:
             crs12 = (crs12 + 180) % 360
             #difference between bearing and azimuth of macro
             diff_crs12_source_azim = abs(((crs12+180) % 360) - ((target_azim+180) % 360) )
-        print('bearing crs12:', crs12)
-        print('diff is', diff_crs12_source_azim)
+        ##print('bearing crs12:', crs12)
+        ##print('diff is', diff_crs12_source_azim)
         """an IBS and a macro coverage intersect if the bearing from source to IBS is within
         the macro sector edges, that is the  diff_crs12_source_azim is less than the half_BW.
         return, how well within the sector coverage. a diff of zero, macro directly facing IBS
