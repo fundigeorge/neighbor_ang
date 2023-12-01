@@ -2,6 +2,7 @@
 from math import radians, cos, sin, asin, acos, sqrt, atan2, atan, pi, degrees
 import numpy as np
 import pandas as pd
+
 class Geodesic:
     """ a class for calculating geodesic measurements, distance between two points on the earth 
     surface, bearing between points, intersection between two lines from two points
@@ -346,8 +347,11 @@ class Geodesic:
             #add column intersection and intersite distance
             neighbors["intersection"] = coverage_intersect
             neighbors["dst12"] = distance12
-           
+        #drop used columns
+        neighbors= neighbors.drop(columns=['latitude', 'longitude', 'height', 'azimuth', 'radian_lon', 'radian_lat', 'radian_azim'])
+
         return neighbors
+    
 # #test data
 # #lat lon in radians
 # lat1=radians(-1.2814722) #0.592539 -1.2814722 36.8209444
