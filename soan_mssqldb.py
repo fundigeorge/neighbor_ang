@@ -62,11 +62,13 @@ def main():
     st.dataframe(s_neighbor_ranked)
     s_bi_directional = neigh.bi_directional(s_neighbor_ranked)
     print('passed getting bi directional neighbors')
-    print(s_bi_directional)
-    neigh.get_cellname(s_bi_directional, conn_db)
+    #get the transmitter details
+    uintrafreq_neighbors = neigh.get_cellname(s_bi_directional, conn_db)
+    uintrafreq_neighbors = neigh.generate_intrafreq_script(uintrafreq_neighbors)
+    print(uintrafreq_neighbors)
     print('passed getting cell names')
 
-    #get the umts co_site data
+    # #get the umts co_site data
     # safaricom_12015 = UmtsTransmitterGraph("Tom Hanks", "moviegraph")
     # tom_hanks_movie = safaricom_12015.get_movies()
     # print(tom_hanks_movie)
