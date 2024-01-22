@@ -5,10 +5,14 @@ import pandas as pd
 import pyodbc
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
-from soan_db_conn import conn_db 
+from soan_db_conn import conn_db, cursor
 import streamlit as st
 from neo4j_connection import UmtsTransmitterGraph
 import neighbors as neigh
+from neighbors import Neighbors
+from sqlalchemy import BigInteger as sqlint
+
+
 
 #user select the site
 test_transmitter = "12001_NW_NI40010"
@@ -56,17 +60,62 @@ def main():
     st.text_area(label='SOURCE NEIGHBORHOOD', value='The calculated intersection and dst12')
     st.dataframe(s_neighborhood)  
     #rank the neighbor and get top neighborhood transmitter
-    s_neighbor_ranked = neigh.neighbor_ranking(s_neighborhood, source_sitename, source_transmitter)
+    #instatiate an object of the Neighbors class with function for neighbor ranking, bi-direction, and get_cellname
+    cell = Neighbors(source_sitename, source_transmitter)
+    s_neighbor_ranked = cell.neighbor_ranking(s_neighborhood)
     print('passed ranking neighbors')
     st.text_area(label ="RANKED NEIGHBOR", value="filtered out the transmitter for the co site")
     st.dataframe(s_neighbor_ranked)
-    s_bi_directional = neigh.bi_directional(s_neighbor_ranked)
+    s_bi_directional = cell.bi_directional(s_neighbor_ranked)
     print('passed getting bi directional neighbors')
     #get the transmitter details
-    uintrafreq_neighbors = neigh.get_cellname(s_bi_directional, conn_db)
-    uintrafreq_neighbors = neigh.generate_intrafreq_script(uintrafreq_neighbors)
+    uintrafreq_neighbors = cell.get_cellname(s_bi_directional, conn_db)
+    uintrafreq_neighbors = cell.generate_intrafreq_script(uintrafreq_neighbors)
     print(uintrafreq_neighbors)
     print('passed getting cell names')
+    print(uintrafreq_neighbors.columns)
+    print(uintrafreq_neighbors.isna().sum())
+    uintrafreq_neighbors = uintrafreq_neighbors.dropna(how='any')
+    uintrafreq_neighbors['source_cellname'] = uintrafreq_neighbors.iloc[0:10, 7].apply(lambda x: (str(x)+'-2'))
+    #uintrafreq_neighbors.to_sql(name='uintrafreq', con =conn_db, if_exists='append', schema='dbo', index=False)
+    #conn_db.commit()
+    
+    duplicates = 0
+    
+    for row in uintrafreq_neighbors.itertuples(index=False):
+        try:
+            query = "insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            query_no_dups = """if not exists (select source_cellname, target_cellname from uintrafreq 
+                                where source_cellname={0} and target_cellname={1}) 
+                                insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                """.format(row.source_cellname, row.target_cellname)
+            cursor.execute(query, row.source_site, row.source_transmitter,  row.target_site, row.target_transmitter, 
+                            int(row.rank), row.source_bscname, int(row.source_rncid), row.source_cellname, 
+                            int(row.source_cellid), row.target_bscname, int(row.target_rncid), row.target_cellname,
+                            int(row.target_cellid), int(row.target_psc), int(row.target_lac), int(row.target_rac),  
+                            row.uintrafreq_cmd 
+                            )
+            cursor.commit()
+        except Exception as error:
+            print(error)
+            duplicates +=1
+        finally:
+            print(duplicates)
+    cursor.close()
+
+    # try:
+    #     print('confirming written data \n',existing_uintrafreq)
+    #     #try writing the same data again
+    #     uintrafreq_neighbors.to_sql(name='uintrafreq', con =conn_db, if_exists='append', schema='dbo', index=False)
+    #     existing_uintrafreq = pd.read_sql('select count(*) from uintrafreq', conn_db)
+    #     #print('2nd writing',rows)
+    #     print('confirming written data2 \n',existing_uintrafreq)
+    #     print(pd.read_sql('select top 5 * from uintrafreq', conn_db))
+    #     conn_db.commit()
+    # except Exception:
+    #     duplicates +=1
+    # finally:
+    #     print(f'there were {duplicates} records already existing')
 
     # #get the umts co_site data
     # safaricom_12015 = UmtsTransmitterGraph("Tom Hanks", "moviegraph")
@@ -77,3 +126,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #check
+    df = pd.read_sql('select * from uintrafreq', conn_db)
+    print(df)
