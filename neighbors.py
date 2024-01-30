@@ -34,10 +34,19 @@ class Neighbors:
     def neighbor_ranking(self, s_neighs:pd.DataFrame):
         #filter out the source site transmitters. captured by co_site relations
         #get transmitter with same sitename and whose distance from source < 50m. the 50m consider sector not at source but
-        #they are not far away to be considered ERRU and filter them out negation    
-        s_neighs = s_neighs.loc[~(s_neighs['site'].isin([self.sitename])&(s_neighs['dst12'] < 0.050))] #filter site displaced sector or ERRU
-        s_neighs = s_neighs.loc[s_neighs['intersection'] != "source point"] #filter out site co-sector
-        s_neighs['intersection'] = pd.to_numeric(s_neighs['intersection'])
+        #they are not far away to be considered ERRU and filter them out negation 
+        #TODO find a better way to deal with co-site sectors both at source site and extended sector not at source
+
+        """option 1 was to detect co-site sectors to be added later from co-sites sectors relation db """  
+        #s_neighs = s_neighs.loc[~(s_neighs['site'].isin([self.sitename])&(s_neighs['dst12'] < 0.050))] #filter site displaced sector or ERRU
+        #s_neighs = s_neighs.loc[s_neighs['intersection'] != "source point"] #filter out site co-sector
+
+        """option 2: detect co-site sector and make them strong neighbors by adjusting their intersection and dst12 value"""
+        #checking dst12 <0.1 for sector offset from site point, they could be ERRU or site sectors on mall rooftop
+        s_neighs.loc[(s_neighs['site'].isin([self.sitename])&(s_neighs['dst12'] < 0.1)), 'intersection'] = 0 #filter site displaced sector or ERRU
+        s_neighs.loc[(s_neighs['intersection'] == "source point"), 'intersection'] = 0 #filter out site co-sector
+      
+        s_neighs['intersection'] = pd.to_numeric(s_neighs['intersection']) #convert values in intersection columns into numerics
 
         #rank the neighbor by weighting intersection and dst12 variables. dst12 weight =0.7 and intersection = 0.3.
         #dst12 carries more weight because it shows a neighbor is near. transimmiter can be far and intersect closely
