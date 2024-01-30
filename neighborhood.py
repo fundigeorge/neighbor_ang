@@ -20,12 +20,13 @@ class Neighborhood:
     -------
     expanded_region(): determine the lat lon making the grid around the source site
     """
-    def __init__(self, lat, lon):
+    def __init__(self, lat, lon, freq:str):
         self.lat = lat
         self.lon = lon
         self.dp = 2
         self.offset = 0.01
         self.site_size = 32
+        self.freq = freq
 
     def expanded_region(self, dp, offset):
         lat = round(self.lat, dp)   
@@ -49,7 +50,13 @@ class Neighborhood:
         #filter from the db  any transmitter with twodp_lat and twodp equal to the source site
         #todo, pick only the site, transmitter, lat, lon, azimuth fields
         #todo what is impact of neigh_sites as a local variable and a object variable
-        query = f"select * from umts_transmitter where (twodp_lat = {lat} and twodp_lon = {lon})"
+        #added checking the transmitter frequency i.e 10587, 10562, 2949
+        query =  f"""select tx.*, cell.uarfc_downlink 
+                    from umts_transmitter tx
+                    left join umts_cells cell 
+                    on tx.transmitter = cell.atoll_transmitter
+                    where (onedp_lat = {lat} and onedp_lon = {lon}) and cell.uarfc_downlink = {self.freq}
+                    """
         neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset ="site").shape 
         # print("sites:transmitter", pd.read_sql('select count(*) from umts_transmitter', conn_db))
@@ -64,16 +71,22 @@ class Neighborhood:
         #if no of sites in area is less expand area to 3.3km sqaurearound the site       
         grids = self.expanded_region(self.dp, self.offset)
         # print(grids)
-        query = f""" select * from umts_transmitter where (twodp_lat={grids[0][0]} and twodp_lon={grids[0][1]}) or
-                                                        (twodp_lat={grids[1][0]} and twodp_lon={grids[1][1]}) or
-                                                        (twodp_lat={grids[2][0]} and twodp_lon={grids[2][1]}) or
-                                                        (twodp_lat={grids[3][0]} and twodp_lon={grids[3][1]}) or
-                                                        (twodp_lat={grids[4][0]} and twodp_lon={grids[4][1]}) or
-                                                        (twodp_lat={grids[5][0]} and twodp_lon={grids[5][1]}) or
-                                                        (twodp_lat={grids[6][0]} and twodp_lon={grids[6][1]}) or
-                                                        (twodp_lat={grids[7][0]} and twodp_lon={grids[7][1]}) or
-                                                        (twodp_lat={grids[8][0]} and twodp_lon={grids[8][1]})                                         
-        """
+        query = f""" select tx.*, cell.uarfc_downlink
+                     from umts_transmitter tx
+                     left join umts_cells cell
+                     on tx.transmitter = cell.atoll_transmitter
+                     where ( 
+                                (twodp_lat={grids[0][0]} and twodp_lon={grids[0][1]}) or
+                                (twodp_lat={grids[1][0]} and twodp_lon={grids[1][1]}) or
+                                (twodp_lat={grids[2][0]} and twodp_lon={grids[2][1]}) or
+                                (twodp_lat={grids[3][0]} and twodp_lon={grids[3][1]}) or
+                                (twodp_lat={grids[4][0]} and twodp_lon={grids[4][1]}) or
+                                (twodp_lat={grids[5][0]} and twodp_lon={grids[5][1]}) or
+                                (twodp_lat={grids[6][0]} and twodp_lon={grids[6][1]}) or
+                                (twodp_lat={grids[7][0]} and twodp_lon={grids[7][1]}) or
+                                (twodp_lat={grids[8][0]} and twodp_lon={grids[8][1]}) 
+                            ) AND cell.uarfc_downlink = {self.freq}
+                    """
         neigh_sites = pd.read_sql(query, conn_db)
         #check if number of site >= 30
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
@@ -87,7 +100,12 @@ class Neighborhood:
         lat = round(self.lat, 1)
         lon = round(self.lon, 1)
         #filter transmitter on this lat lon combination
-        query = f'select * from umts_transmitter where (onedp_lat = {lat} and onedp_lon = {lon})'
+        query = f"""select tx.*, cell.uarfc_downlink 
+                    from umts_transmitter tx
+                    left join umts_cells cell 
+                    on tx.transmitter = cell.atoll_transmitter
+                    where (onedp_lat = {lat} and onedp_lon = {lon}) and cell.uarfc_downlink = {self.freq}
+                    """
         neigh_sites = pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
         # print("11km square", neigh_sites.shape)
@@ -99,16 +117,22 @@ class Neighborhood:
         #if no site is less expand the area to 33km square around the surce
         grids = self.expanded_region(1, 0.1)
         # print(grids)
-        query = f""" select * from umts_transmitter where (onedp_lat={grids[0][0]} and onedp_lon={grids[0][1]}) or
-                                                        (onedp_lat={grids[1][0]} and onedp_lon={grids[1][1]}) or
-                                                        (onedp_lat={grids[2][0]} and onedp_lon={grids[2][1]}) or
-                                                        (onedp_lat={grids[3][0]} and onedp_lon={grids[3][1]}) or
-                                                        (onedp_lat={grids[4][0]} and onedp_lon={grids[4][1]}) or
-                                                        (onedp_lat={grids[5][0]} and onedp_lon={grids[5][1]}) or
-                                                        (onedp_lat={grids[6][0]} and onedp_lon={grids[6][1]}) or
-                                                        (onedp_lat={grids[7][0]} and onedp_lon={grids[7][1]}) or
-                                                        (onedp_lat={grids[8][0]} and onedp_lon={grids[8][1]})                                         
-        """            
+        query = f""" select tx.*, cell.uarfc_downlink 
+                    from umts_transmitter tx
+                    left join umts_cells cell 
+                    on tx.transmitter = cell.atoll_transmitter
+                    where ( 
+                                (onedp_lat={grids[0][0]} and onedp_lon={grids[0][1]}) or
+                                (onedp_lat={grids[1][0]} and onedp_lon={grids[1][1]}) or
+                                (onedp_lat={grids[2][0]} and onedp_lon={grids[2][1]}) or
+                                (onedp_lat={grids[3][0]} and onedp_lon={grids[3][1]}) or
+                                (onedp_lat={grids[4][0]} and onedp_lon={grids[4][1]}) or
+                                (onedp_lat={grids[5][0]} and onedp_lon={grids[5][1]}) or
+                                (onedp_lat={grids[6][0]} and onedp_lon={grids[6][1]}) or
+                                (onedp_lat={grids[7][0]} and onedp_lon={grids[7][1]}) or
+                                (onedp_lat={grids[8][0]} and onedp_lon={grids[8][1]}) 
+                            ) AND cell.uarfc_downlink = {self.freq}                                      
+                    """            
         neigh_sites =pd.read_sql(query, conn_db)
         unique_sites = neigh_sites.drop_duplicates(subset="site").shape
         # print(unique_sites)
