@@ -39,17 +39,25 @@ def main():
     source_lat_rad = source_site.loc[:, 'radian_lat'].iloc[0]
     source_lon_rad = source_site.loc[:, 'radian_lon'].iloc[0]
     source_azim_rad = source_site.loc[:, 'radian_azim'].iloc[0]
+    #display the transmitter selected
+    st.text('Transmitter selected')
+    st.text(source_transmitter)
+    #generate neighbors
+    technology = st.selectbox('select technology', ('GSM', 'UMTS', 'LTE', 'NR'))
+    st.text(f'you have selected {technology}')
 
     print(source_lat, source_lon, source_azim, '\n')
-   
-    """with source lat lon get the neighbor sites...4"""
-    neighbors = Neighborhood(source_lat, source_lon)
+    
+    #with source lat lon get the neighbor sites...4"""
+    freq = '10587'
+    neighbors = Neighborhood(source_lat, source_lon, freq)
     #param:neigh_size ensure atleast neigh_size neighboring site to the source site
     source_neighbors = neighbors.source_neighbors(32)
-    print(source_neighbors.head(10), "size of the neighbor", source_neighbors.shape)
+    st.dataframe(source_neighbors)
     #drop truncated lat and lon columns
     source_neighbors = source_neighbors.drop(columns=['onedp_lat', 'onedp_lon', 'twodp_lat', 'twodp_lon'])
-    print('passed dropping columns')
+    print('passed dropping columns\n')
+    
     """calculate best neighbors for the source site"""
     #instantiate a source geodesic object with method to calculte distance btn source_target and best intersection
     source_geodesic = Geodesic(source_lat_rad, source_lon_rad, source_azim_rad, source_coverage)
@@ -57,24 +65,22 @@ def main():
     #calculate distance and intersection between source and neighbors
     s_neighborhood = source_geodesic.source_neighbors(source_neighbors)
     print('passed got neighbors to source')
-    st.text_area(label='SOURCE NEIGHBORHOOD', value='The calculated intersection and dst12')
-    st.dataframe(s_neighborhood)  
+    st.text('The calculated intersection and dst12')
+    st.dataframe(s_neighborhood, hide_index=True)  
     #rank the neighbor and get top neighborhood transmitter
     #instatiate an object of the Neighbors class with function for neighbor ranking, bi-direction, and get_cellname
     cell = Neighbors(source_sitename, source_transmitter)
     s_neighbor_ranked = cell.neighbor_ranking(s_neighborhood)
     print('passed ranking neighbors')
-    st.text_area(label ="RANKED NEIGHBOR", value="filtered out the transmitter for the co site")
-    st.dataframe(s_neighbor_ranked)
+    st.text("ranked neighbors")
+    st.dataframe(s_neighbor_ranked, hide_index=True)
     s_bi_directional = cell.bi_directional(s_neighbor_ranked)
+    st.text("Added bi-directional neigh")
+    st.dataframe(s_bi_directional, hide_index=True)  
     print('passed getting bi directional neighbors')
     #get the transmitter details
     uintrafreq_neighbors = cell.get_cellname(s_bi_directional, conn_db)
     uintrafreq_neighbors = cell.generate_intrafreq_script(uintrafreq_neighbors)
-    print(uintrafreq_neighbors)
-    print('passed getting cell names')
-    print(uintrafreq_neighbors.columns)
-    print(uintrafreq_neighbors.isna().sum())
     uintrafreq_neighbors = uintrafreq_neighbors.dropna(how='any')
     uintrafreq_neighbors['source_cellname'] = uintrafreq_neighbors.iloc[0:10, 7].apply(lambda x: (str(x)+'-2'))
     #uintrafreq_neighbors.to_sql(name='uintrafreq', con =conn_db, if_exists='append', schema='dbo', index=False)
@@ -87,8 +93,9 @@ def main():
             query = "insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             query_no_dups = """if not exists (select source_cellname, target_cellname from uintrafreq 
                                 where source_cellname={0} and target_cellname={1}) 
-                                insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)                                
                                 """.format(row.source_cellname, row.target_cellname)
+            query_2 = "insert into uintrafreq values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY"
             cursor.execute(query, row.source_site, row.source_transmitter,  row.target_site, row.target_transmitter, 
                             int(row.rank), row.source_bscname, int(row.source_rncid), row.source_cellname, 
                             int(row.source_cellid), row.target_bscname, int(row.target_rncid), row.target_cellname,
@@ -101,7 +108,7 @@ def main():
             duplicates +=1
         finally:
             print(duplicates)
-    cursor.close()
+    #cursor.close()
 
     # try:
     #     print('confirming written data \n',existing_uintrafreq)
