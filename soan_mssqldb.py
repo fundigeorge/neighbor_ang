@@ -85,7 +85,7 @@ def main():
     uintrafreq_neighbors['source_cellname'] = uintrafreq_neighbors.iloc[0:10, 7].apply(lambda x: (str(x)+'-2'))
     #uintrafreq_neighbors.to_sql(name='uintrafreq', con =conn_db, if_exists='append', schema='dbo', index=False)
     #conn_db.commit()
-    
+    #comment for testing 
     duplicates = 0
     
     for row in uintrafreq_neighbors.itertuples(index=False):
